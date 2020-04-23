@@ -652,6 +652,10 @@
       "description": "Publish icon"
     },
     {
+      "name": "part:@sanity/base/truncate-icon",
+      "description": "Truncate icon"
+    },
+    {
       "name": "part:@sanity/base/unpublish-icon",
       "description": "Unpublish icon"
     },
@@ -818,6 +822,10 @@
     {
       "implements": "part:@sanity/base/publish-icon",
       "path": "components/icons/Publish.js"
+    },
+    {
+      "implements": "part:@sanity/base/truncate-icon",
+      "path": "components/icons/Truncate.js"
     },
     {
       "implements": "part:@sanity/base/unpublish-icon",

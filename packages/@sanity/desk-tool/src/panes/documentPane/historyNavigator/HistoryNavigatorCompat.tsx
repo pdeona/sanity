@@ -58,6 +58,26 @@ export function HistoryNavigatorCompat(props: HistoryNavigatorProps) {
       }
     }
 
+    if (event.type === 'deleted') {
+      return {
+        type: 'delete',
+        timestamp: Date.parse(event.endTime),
+        userId: event.userIds[0],
+        offset: 0,
+        rev: event.rev
+      }
+    }
+
+    if (event.type === 'discardDraft') {
+      return {
+        type: 'discardDraft',
+        timestamp: Date.parse(event.endTime),
+        userId: event.userIds[0],
+        offset: 0,
+        rev: event.rev
+      }
+    }
+
     if (event.type === 'published') {
       return {
         type: 'publish',
@@ -73,6 +93,16 @@ export function HistoryNavigatorCompat(props: HistoryNavigatorProps) {
         type: 'unpublish',
         timestamp: Date.parse(event.endTime),
         userId: event.userIds[0],
+        offset: 0,
+        rev: event.rev
+      }
+    }
+
+    if (event.type === 'truncated') {
+      return {
+        type: 'truncate',
+        timestamp: Date.parse(event.endTime),
+        userIds: event.userIds,
         offset: 0,
         rev: event.rev
       }

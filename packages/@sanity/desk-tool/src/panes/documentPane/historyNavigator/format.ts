@@ -39,5 +39,5 @@ export function formatDate(now: number, date: Date | number): string {
     return format(date, 'MMM d @ HH:mm:ss')
   }
 
-  return format(date, 'MMM d, yyyy @ HH:mm:ss')
+  return format(date, 'MMM d, YYYY @ HH:mm:ss')
 }

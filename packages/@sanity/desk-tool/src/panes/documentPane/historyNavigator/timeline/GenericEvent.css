@@ -1,53 +1,55 @@
 @import 'part:@sanity/base/theme/variables-style';
 
 .root {
-  -webkit-appearance: none;
-  -webkit-font-smoothing: inherit;
-  position: relative;
-  display: block;
-  text-align: inherit;
-  font: inherit;
-  background: none;
-  color: inherit;
-  box-sizing: border-box;
-  width: 100%;
-  border: 0;
-  border-radius: 0;
-  padding: 1em 1em 1em 2.5em;
-  margin: 0;
-  outline: none;
-  cursor: pointer;
-
-  @nest &:before {
-    content: '';
+  @nest & > button {
+    -webkit-appearance: none;
+    -webkit-font-smoothing: inherit;
+    position: relative;
     display: block;
-    position: absolute;
-    top: 0;
-    left: 1.5em;
-    height: calc(1em - 1px);
-    border-left: 1px solid var(--hairline-color);
+    text-align: inherit;
+    font: inherit;
+    background: none;
+    color: inherit;
+    box-sizing: border-box;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    padding: 1em 1em 1em 2.5em;
+    margin: 0;
+    outline: none;
+    cursor: pointer;
+
+    @nest &:before {
+      content: '';
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 1.5em;
+      height: calc(1em - 1px);
+      border-left: 1px solid var(--hairline-color);
+    }
+
+    @nest &:after {
+      content: '';
+      display: block;
+      position: absolute;
+      top: calc(1em - 1px + 17px);
+      left: 1.5em;
+      bottom: 0;
+      border-left: 1px solid var(--hairline-color);
+    }
   }
 
-  @nest &:after {
-    content: '';
-    display: block;
-    position: absolute;
-    top: calc(1em - 1px + 17px);
-    left: 1.5em;
-    bottom: 0;
-    border-left: 1px solid var(--hairline-color);
-  }
-
-  @nest &.isFirst:before {
+  @nest &.isFirst > button:before {
     display: none;
   }
 
-  @nest &.isLast:after {
+  @nest &.isLast > button:after {
     display: none;
   }
 }
 
-.root:not(.isSelected):hover {
+.root:not(.isSelected) > button:hover {
   background: color(var(--selectable-item-base) alpha(20%));
 
   /* @nest &:before, &:after {
@@ -57,11 +59,14 @@
 
 .isSelected {
   composes: root;
-  background: var(--selectable-item-base);
-  color: #fff;
 
-  @nest &:before, &:after {
-    border-color: #fff;
+  @nest & > button {
+    background: var(--selectable-item-base);
+    color: #fff;
+
+    @nest &:before, &:after {
+      border-color: #fff;
+    }
   }
 }
 
@@ -90,4 +95,28 @@
 .dateline {
   font-size: 13px;
   line-height: 17px;
+}
+
+.content {
+  padding: 0 1rem 1rem 2.5rem;
+  font-size: 14px;
+  line-height: 17px;
+
+  @nest & > p {
+    margin: 0;
+
+    @nest & + p {
+      margin-top: 0.25rem;
+    }
+  }
+
+  @nest & a {
+    text-decoration: none;
+    color: var(--selectable-item-base);
+    border-bottom: 1px solid color(var(--selectable-item-base) alpha(20%));
+
+    @nest &:hover {
+      border-color: var(--selectable-item-base);
+    }
+  }
 }

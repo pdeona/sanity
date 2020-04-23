@@ -7,6 +7,9 @@
 import QuestionIcon from 'part:@sanity/base/question-icon'
 import PlusIcon from 'part:@sanity/base/plus-icon'
 import PublishIcon from 'part:@sanity/base/publish-icon'
+import TrashIcon from 'part:@sanity/base/trash-icon'
+import TruncateIcon from 'part:@sanity/base/truncate-icon'
+import UndoIcon from 'part:@sanity/base/undo-icon'
 import UnpublishIcon from 'part:@sanity/base/unpublish-icon'
 import * as React from 'react'
 import {HistoryTimelineEvent} from '../types'
@@ -49,6 +52,36 @@ function HistoryTimelineEventResolver({
         onClick={() => onOpenRevision(event.rev)}
         timestamp={event.timestamp}
         title="Created"
+      />
+    )
+  }
+
+  if (event.type === 'delete') {
+    return (
+      <GenericEvent
+        icon={<TrashIcon />}
+        isFirst={isFirst}
+        isLast={isLast}
+        isSelected={event.rev === selectedRev}
+        now={now}
+        onClick={() => onOpenRevision(event.rev)}
+        timestamp={event.timestamp}
+        title="Deleted"
+      />
+    )
+  }
+
+  if (event.type === 'discardDraft') {
+    return (
+      <GenericEvent
+        icon={<UndoIcon />}
+        isFirst={isFirst}
+        isLast={isLast}
+        isSelected={event.rev === selectedRev}
+        now={now}
+        onClick={() => onOpenRevision(event.rev)}
+        timestamp={event.timestamp}
+        title="Discarded drafts"
       />
     )
   }
@@ -96,6 +129,34 @@ function HistoryTimelineEventResolver({
     )
   }
 
+  if (event.type === 'truncate') {
+    return (
+      <GenericEvent
+        icon={<TruncateIcon />}
+        isFirst={isFirst}
+        isLast={isLast}
+        isSelected={event.rev === selectedRev}
+        now={now}
+        onClick={() => onOpenRevision(event.rev)}
+        timestamp={event.timestamp}
+        title="Truncated"
+      >
+        <div className={styles.truncatedInfo}>
+          <p>
+            <a
+              href="https://www.sanity.io/docs/content-studio/history-experience"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn about
+              <br /> history retention &rarr;
+            </a>
+          </p>
+        </div>
+      </GenericEvent>
+    )
+  }
+
   return (
     <GenericEvent
       icon={<QuestionIcon />}
@@ -104,7 +165,7 @@ function HistoryTimelineEventResolver({
       isSelected={(event as any).rev === selectedRev}
       now={now}
       onClick={() => onOpenRevision((event as any).rev)}
-      title={`Unknown event type: ${(event as any).type}`}
+      title={(event as any).type}
     />
   )
 }

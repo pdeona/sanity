@@ -6,6 +6,22 @@ export interface HistoryTimelineCreateEvent {
   rev: string
 }
 
+export interface HistoryTimelineDeleteEvent {
+  type: 'delete'
+  timestamp: number
+  userId: string
+  offset: number
+  rev: string
+}
+
+export interface HistoryTimelineDiscardDraftEvent {
+  type: 'discardDraft'
+  timestamp: number
+  userId: string
+  offset: number
+  rev: string
+}
+
 export interface HistoryTimelineEditSessionGroupEvent {
   type: 'editSessionGroup'
   sessions: Array<{
@@ -29,6 +45,14 @@ export interface HistoryTimelinePublishEvent {
   rev: string
 }
 
+export interface HistoryTimelineTruncateEvent {
+  type: 'truncate'
+  timestamp: number
+  userIds: string[]
+  offset: number
+  rev: string
+}
+
 export interface HistoryTimelineUnpublishEvent {
   type: 'unpublish'
   timestamp: number
@@ -45,6 +69,9 @@ export interface HistoryTimelineUnknownEvent {
 
 export type HistoryTimelineEvent =
   | HistoryTimelineCreateEvent
+  | HistoryTimelineDeleteEvent
+  | HistoryTimelineDiscardDraftEvent
   | HistoryTimelineEditSessionGroupEvent
   | HistoryTimelinePublishEvent
+  | HistoryTimelineTruncateEvent
   | HistoryTimelineUnpublishEvent

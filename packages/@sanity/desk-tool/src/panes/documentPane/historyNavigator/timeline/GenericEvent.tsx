@@ -7,6 +7,7 @@ import {formatDate} from '../format'
 import styles from './GenericEvent.css'
 
 interface Props {
+  children?: React.ReactNode
   icon?: React.ReactNode
   isFirst: boolean
   isLast: boolean
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function GenericEvent({
+  children,
   icon,
   isFirst,
   isLast,
@@ -28,18 +30,19 @@ export function GenericEvent({
   title
 }: Props) {
   return (
-    <button
+    <div
       className={classNames(
         isSelected ? styles.isSelected : styles.root,
         isFirst && styles.isFirst,
         isLast && styles.isLast
       )}
-      onClick={onClick}
-      type="button"
     >
-      <div className={styles.iconContainer}>{icon}</div>
-      <div className={styles.heading}>{title}</div>
-      {timestamp && <div className={styles.dateline}>{formatDate(now, timestamp)}</div>}
-    </button>
+      <button onClick={onClick} type="button">
+        <div className={styles.iconContainer}>{icon}</div>
+        <div className={styles.heading}>{title}</div>
+        {timestamp && <div className={styles.dateline}>{formatDate(now, timestamp)}</div>}
+      </button>
+      {children && <div className={styles.content}>{children}</div>}
+    </div>
   )
 }
