@@ -189,7 +189,7 @@ function HistoryTimelineEventResolver({
   )
 }
 
-export function HistoryTimeline(props: Props) {
+export const HistoryTimeline = React.memo((props: Props) => {
   const {events, onSelect, selection, selectionRange} = props
   const len = events.length
   const {from, to} = selectionRange
@@ -215,4 +215,6 @@ export function HistoryTimeline(props: Props) {
       })}
     </div>
   )
-}
+})
+
+HistoryTimeline.displayName = 'HistoryTimeline'

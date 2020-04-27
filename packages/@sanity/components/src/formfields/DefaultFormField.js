@@ -6,7 +6,6 @@ import styles from 'part:@sanity/components/formfields/default-style'
 import DefaultLabel from 'part:@sanity/components/labels/default'
 import ValidationStatus from 'part:@sanity/components/validation/status'
 import ValidationList from 'part:@sanity/components/validation/list'
-import AnimateHeight from 'react-animate-height'
 
 export default class DefaultFormField extends React.PureComponent {
   static propTypes = {
@@ -83,13 +82,9 @@ export default class DefaultFormField extends React.PureComponent {
               </div>
             </div>
           )}
-          <AnimateHeight
-            height={showValidationMessages ? 'auto' : 0}
-            contentClassName={styles.validationList}
-            animateOpacity
-          >
+          <div className={styles.validationList}>
             <ValidationList markers={markers} />
-          </AnimateHeight>
+          </div>
           <div className={styles.content}>{children}</div>
         </label>
       </div>

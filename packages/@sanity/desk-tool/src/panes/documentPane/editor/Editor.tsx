@@ -62,214 +62,241 @@ interface Props {
   views: DocumentViewType[]
 }
 
-function HistorySpinner({
-  selectedHistoryEvent
-}: {
-  selectedHistoryEvent: HistoryTimelineEvent | null
-}) {
-  const historyEventStr = selectedHistoryEvent
-    ? getHistoryEventDateString(selectedHistoryEvent)
-    : null
+const HistorySpinner = React.memo(
+  ({selectedHistoryEvent}: {selectedHistoryEvent: HistoryTimelineEvent | null}) => {
+    console.log('<HistorySpinner />')
 
-  return (
-    <Delay ms={600}>
-      <div className={styles.spinnerContainer}>
-        <Spinner
-          center
-          message={`Loading revision${historyEventStr ? ` from ${historyEventStr}` : ''}…`}
+    const historyEventStr = selectedHistoryEvent
+      ? getHistoryEventDateString(selectedHistoryEvent)
+      : null
+
+    return (
+      <Delay ms={600}>
+        <div className={styles.spinnerContainer}>
+          <Spinner
+            center
+            message={`Loading revision${historyEventStr ? ` from ${historyEventStr}` : ''}…`}
+          />
+        </div>
+      </Delay>
+    )
+  }
+)
+
+HistorySpinner.displayName = 'HistorySpinner'
+
+const PaneHeaderActions = React.memo(
+  (props: {
+    documentId: string
+    documentType: string
+    markers: any
+    onCloseValidationResults: () => void
+    onSetFocus: (path: any) => void
+    onToggleValidationResults: () => void
+    showValidationTooltip: boolean
+  }) => {
+    console.log('<PaneHeaderActions />')
+
+    const {
+      documentId,
+      documentType,
+      markers,
+      onCloseValidationResults,
+      onSetFocus,
+      onToggleValidationResults,
+      showValidationTooltip
+    } = props
+
+    return (
+      <div className={styles.paneFunctions}>
+        {LanguageFilter && <LanguageFilter />}
+        <Validation
+          id={documentId}
+          type={documentType}
+          markers={markers}
+          showValidationTooltip={showValidationTooltip}
+          onCloseValidationResults={onCloseValidationResults}
+          onToggleValidationResults={onToggleValidationResults}
+          onFocus={onSetFocus}
         />
       </div>
-    </Delay>
-  )
-}
+    )
+  }
+)
 
-function PaneHeaderActions(props: {
-  documentId: string
-  documentType: string
-  markers: any
-  onCloseValidationResults: () => void
-  onSetFocus: (path: any) => void
-  onToggleValidationResults: () => void
-  showValidationTooltip: boolean
-}) {
-  const {
+PaneHeaderActions.displayName = 'PaneHeaderActions'
+
+const EditorFooter = React.memo(
+  ({
     documentId,
     documentType,
-    markers,
-    onCloseValidationResults,
-    onSetFocus,
-    onToggleValidationResults,
-    showValidationTooltip
-  } = props
+    initialValue,
+    isHistoryOpen,
+    onOpenHistory,
+    selectedHistoryEvent,
+    selectedHistoryEventIsLatest,
+    value: valueProp
+  }: {
+    documentId: string
+    documentType: string
+    initialValue: Doc
+    isHistoryOpen: boolean
+    onOpenHistory: () => void
+    selectedHistoryEvent: HistoryTimelineEvent | null
+    selectedHistoryEventIsLatest: boolean
+    value: Doc | null
+  }) => {
+    console.log('<EditorFooter />')
 
-  return (
-    <div className={styles.paneFunctions}>
-      {LanguageFilter && <LanguageFilter />}
-      <Validation
-        id={documentId}
-        type={documentType}
-        markers={markers}
-        showValidationTooltip={showValidationTooltip}
-        onCloseValidationResults={onCloseValidationResults}
-        onToggleValidationResults={onToggleValidationResults}
-        onFocus={onSetFocus}
-      />
-    </div>
-  )
-}
+    if (isHistoryOpen && !selectedHistoryEventIsLatest && selectedHistoryEvent) {
+      return (
+        <HistoryStatusBar
+          id={documentId}
+          type={documentType}
+          selectedEvent={selectedHistoryEvent}
+          isLatestEvent={selectedHistoryEventIsLatest}
+        />
+      )
+    }
 
-function EditorFooter({
-  documentId,
-  documentType,
-  initialValue,
-  isHistoryOpen,
-  onOpenHistory,
-  selectedHistoryEvent,
-  selectedHistoryEventIsLatest,
-  value: valueProp
-}: {
-  documentId: string
-  documentType: string
-  initialValue: Doc
-  isHistoryOpen: boolean
-  onOpenHistory: () => void
-  selectedHistoryEvent: HistoryTimelineEvent | null
-  selectedHistoryEventIsLatest: boolean
-  value: Doc | null
-}) {
-  if (isHistoryOpen && !selectedHistoryEventIsLatest && selectedHistoryEvent) {
+    const value = valueProp || initialValue
+
     return (
-      <HistoryStatusBar
+      <DocumentStatusBar
         id={documentId}
         type={documentType}
-        selectedEvent={selectedHistoryEvent}
-        isLatestEvent={selectedHistoryEventIsLatest}
+        lastUpdated={value && value._updatedAt}
+        onLastUpdatedButtonClick={onOpenHistory}
       />
     )
   }
+)
 
-  const value = valueProp || initialValue
+EditorFooter.displayName = 'EditorFooter'
 
-  return (
-    <DocumentStatusBar
-      id={documentId}
-      type={documentType}
-      lastUpdated={value && value._updatedAt}
-      onLastUpdatedButtonClick={onOpenHistory}
-    />
-  )
-}
-
-function DocumentView({
-  activeViewId,
-  connectionState,
-  documentId,
-  documentType,
-  formRef,
-  revision,
-  initialValue,
-  isHistoryOpen,
-  markers,
-  onChange,
-  selectedHistoryEvent,
-  selectedHistoryEventIsLatest,
-  value,
-  views
-}: {
-  activeViewId: string
-  connectionState: string
-  documentId: string
-  documentType: string
-  formRef: React.RefObject<any>
-  revision: HistoryRevisionState
-  initialValue: Doc
-  isHistoryOpen: boolean
-  markers: any
-  onChange: (patches: any[]) => void
-  selectedHistoryEvent: HistoryTimelineEvent | null
-  selectedHistoryEventIsLatest: boolean
-  value: Doc | null
-  views: {
-    type: string
-    id: string
-    title: string
-    options: {}
-    component: React.ComponentType<any>
-  }[]
-}) {
-  // const typeName = options.type
-  const schemaType = schema.get(documentType)
-  const activeView = views.find(view => view.id === activeViewId) || views[0] || {type: 'form'}
-
-  // Should be null if not displaying a revision revision
-  const revisionSnapshot = selectedHistoryEventIsLatest
-    ? value
-    : revision.snapshot || revision.prevSnapshot
-
-  const viewProps = {
-    // "Documents"
-    document: {
-      published: value,
-      draft: value,
-      revision: revisionSnapshot,
-      displayed: revisionSnapshot || value || initialValue
-    },
-
-    // Other stuff
-    documentId,
-    options: activeView.options,
-    schemaType
-  }
-
-  const formProps = {
-    ...viewProps,
-    value: value,
+const DocumentView = React.memo(
+  ({
+    activeViewId,
     connectionState,
+    documentId,
+    documentType,
+    formRef,
+    revision,
     initialValue,
     isHistoryOpen,
     markers,
     onChange,
     selectedHistoryEvent,
-    selectedHistoryEventIsLatest: selectedHistoryEventIsLatest
+    selectedHistoryEventIsLatest,
+    value,
+    views
+  }: {
+    activeViewId: string
+    connectionState: string
+    documentId: string
+    documentType: string
+    formRef: React.RefObject<any>
+    revision: HistoryRevisionState
+    initialValue: Doc
+    isHistoryOpen: boolean
+    markers: any
+    onChange: (patches: any[]) => void
+    selectedHistoryEvent: HistoryTimelineEvent | null
+    selectedHistoryEventIsLatest: boolean
+    value: Doc | null
+    views: {
+      type: string
+      id: string
+      title: string
+      options: {}
+      component: React.ComponentType<any>
+    }[]
+  }) => {
+    console.log('<DocumentView />')
+
+    const schemaType = schema.get(documentType)
+    const activeView = views.find(view => view.id === activeViewId) || views[0] || {type: 'form'}
+
+    // Should be null if not displaying a revision revision
+    const revisionSnapshot = selectedHistoryEventIsLatest
+      ? value
+      : revision.snapshot || revision.prevSnapshot
+
+    const viewProps = {
+      // "Documents"
+      document: {
+        published: value,
+        draft: value,
+        revision: revisionSnapshot,
+        displayed: revisionSnapshot || value || initialValue
+      },
+
+      // Other stuff
+      documentId,
+      options: activeView.options,
+      schemaType
+    }
+
+    const formProps = {
+      ...viewProps,
+      value: value,
+      connectionState,
+      initialValue,
+      isHistoryOpen,
+      markers,
+      onChange,
+      selectedHistoryEvent,
+      selectedHistoryEventIsLatest: selectedHistoryEventIsLatest
+    }
+
+    switch (activeView.type) {
+      case 'form':
+        return <FormView {...formProps} id={documentId} ref={formRef} />
+      case 'component':
+        return <activeView.component {...viewProps} />
+      default:
+        return null
+    }
   }
+)
 
-  switch (activeView.type) {
-    case 'form':
-      return <FormView {...formProps} id={documentId} ref={formRef} />
-    case 'component':
-      return <activeView.component {...viewProps} />
-    default:
-      return null
+DocumentView.displayName = 'DocumentView'
+
+const DocumentHeaderTitle = React.memo(
+  ({
+    documentType,
+    paneTitle,
+    value
+  }: {
+    documentType: string
+    paneTitle?: string
+    value: Doc | null
+  }) => {
+    console.log('<DocumentHeaderTitle />')
+
+    const type = schema.get(documentType)
+
+    if (paneTitle) {
+      return <span>{paneTitle}</span>
+    }
+
+    if (!value) {
+      return <>New {type.title || type.name}</>
+    }
+
+    return (
+      <PreviewFields document={value} type={type} fields={['title']}>
+        {({title}) => (title ? <span>{title}</span> : <em>Untitled</em>)}
+      </PreviewFields>
+    )
   }
-}
+)
 
-function DocumentHeaderTitle({
-  documentType,
-  paneTitle,
-  value
-}: {
-  documentType: string
-  paneTitle?: string
-  value: Doc | null
-}) {
-  const type = schema.get(documentType)
+DocumentHeaderTitle.displayName = 'DocumentHeaderTitle'
 
-  if (paneTitle) {
-    return <span>{paneTitle}</span>
-  }
+const Editor = React.memo((props: Props) => {
+  console.log('<Editor />')
 
-  if (!value) {
-    return <>New {type.title || type.name}</>
-  }
-
-  return (
-    <PreviewFields document={value} type={type} fields={['title']}>
-      {({title}) => (title ? <span>{title}</span> : <em>Untitled</em>)}
-    </PreviewFields>
-  )
-}
-
-function Editor(props: Props) {
   const {
     activeViewId,
     connectionState,
@@ -406,6 +433,8 @@ function Editor(props: Props) {
       <DocumentOperationResults id={documentId} type={documentType} />
     </TabbedPane>
   )
-}
+})
+
+Editor.displayName = 'Editor'
 
 export default Editor

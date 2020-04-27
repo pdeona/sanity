@@ -10,7 +10,7 @@ interface Props {
   sessions: EditSession[]
 }
 
-function EditSessionList({isSelected, sessions}: Props) {
+const EditSessionList = React.memo(({isSelected, sessions}: Props) => {
   return (
     <div className={isSelected ? styles.isSelected : styles.root}>
       {sessions.map((session, sessionIndex) => (
@@ -22,6 +22,8 @@ function EditSessionList({isSelected, sessions}: Props) {
       ))}
     </div>
   )
-}
+})
+
+EditSessionList.displayName = 'EditSessionList'
 
 export default EditSessionList

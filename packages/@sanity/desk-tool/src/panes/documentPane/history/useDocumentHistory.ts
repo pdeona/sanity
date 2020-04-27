@@ -1,7 +1,16 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
 import historyStore from 'part:@sanity/base/datastore/history'
-import * as React from 'react'
+import {
+  Dispatch,
+  MutableRefObject,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import {from, Observable, Subscription} from 'rxjs'
 import {map, tap} from 'rxjs/operators'
 import {usePaneRouter} from '../../../contexts/PaneRouterContext'
@@ -31,23 +40,66 @@ const INITIAL_HISTORY_STATE: HistoryEventsState = {
   events: []
 }
 
-const DEBUG_HISTORY_TRANSITION = false
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debug(...args: any[]) {
-  if (DEBUG_HISTORY_TRANSITION) {
-    const logLine = typeof args[0] === 'string' ? `[HISTORY] ${args[0]}` : '[HISTORY] '
-    // eslint-disable-next-line no-console
-    console.log(logLine, ...args.slice(1))
-  }
+function fetchRevision(documentId: string, rev: string): Observable<Doc> {
+  return from(historyStore.getDocumentAtRevision(documentId, rev) as Promise<Doc>)
 }
 
-function fetchRevision(documentId: string, rev: string): Observable<Doc> {
-  debug(`Fetching revision=${rev}`)
+function loadRev(
+  subRef: MutableRefObject<Subscription | null>,
+  revRef: MutableRefObject<string | null>,
+  event: HistoryTimelineEvent | null,
+  rev: string | null,
+  setRevision: Dispatch<SetStateAction<HistoryRevisionState>>,
+  selectedHistoryEventIsLatest: boolean,
+  isHistoryEventsLoaded: boolean
+) {
+  const prevRev = revRef.current
 
-  const promise: Promise<Doc> = historyStore.getDocumentAtRevision(documentId, rev)
+  if (!rev || selectedHistoryEventIsLatest) {
+    if (prevRev) setRevision(INITIAL_REVISION)
+    return
+  }
 
-  return from(promise)
+  if (!isHistoryEventsLoaded) return
+
+  // Check if the revision ID was changed
+  if (rev !== prevRev) {
+    revRef.current = rev
+
+    if (!event) return
+    if (event.type === 'unknown') return
+    if (!event.displayDocumentId) return
+
+    setRevision(val => ({
+      ...val,
+      snapshot: null,
+      prevSnapshot: val.snapshot || val.prevSnapshot,
+      isLoading: true
+    }))
+
+    if (subRef.current) {
+      subRef.current.unsubscribe()
+      subRef.current = null
+    }
+
+    subRef.current = fetchRevision(event.displayDocumentId, event.rev).subscribe({
+      next(snapshot) {
+        setRevision(val => ({
+          ...val,
+          isLoading: false,
+          snapshot,
+          prevSnapshot: null
+        }))
+      },
+      error(err: Error) {
+        setRevision(val => ({
+          ...val,
+          error: err,
+          isLoading: false
+        }))
+      }
+    })
+  }
 }
 
 export function useDocumentHistory({
@@ -62,25 +114,26 @@ export function useDocumentHistory({
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const paneRouter: any = usePaneRouter()
+  const [urlRev, setUrlRev] = useState<string | null>(urlParams.rev)
 
   // Refs
-  const toRevRef = React.useRef<string | null>(null)
-  const fromRevRef = React.useRef<string | null>(null)
-  const toRevSubRef = React.useRef<Subscription | null>(null)
-  const fromRevSubRef = React.useRef<Subscription | null>(null)
-  const historyEventsSubscriptionRef = React.useRef<Subscription | null>(null)
-  const documentRevisionSubscriptionRef = React.useRef<Subscription | null>(null)
+  const toRevRef = useRef<string | null>(null)
+  const fromRevRef = useRef<string | null>(null)
+  const toRevSubRef = useRef<Subscription | null>(null)
+  const fromRevSubRef = useRef<Subscription | null>(null)
+  const historyEventsSubscriptionRef = useRef<Subscription | null>(null)
+  const documentRevisionSubscriptionRef = useRef<Subscription | null>(null)
 
   // States
-  const [historyState, setHistoryEventsState] = React.useState<HistoryEventsState>({
+  const [historyState, setHistoryEventsState] = useState<HistoryEventsState>({
     ...INITIAL_HISTORY_STATE
   })
-  const [toRevision, setToRevision] = React.useState<HistoryRevisionState>(INITIAL_REVISION)
-  const [fromRevision, setFromRevision] = React.useState<HistoryRevisionState>(INITIAL_REVISION)
+  const [toRevision, setToRevision] = useState<HistoryRevisionState>(INITIAL_REVISION)
+  const [fromRevision, setFromRevision] = useState<HistoryRevisionState>(INITIAL_REVISION)
 
   // Values
-  const selection = React.useMemo(() => decodeRevisionRange(urlParams.rev || null), [urlParams.rev])
-  const range = React.useMemo((): HistorySelectionRange => {
+  const selection = useMemo(() => decodeRevisionRange(urlRev), [urlRev])
+  const range = useMemo((): HistorySelectionRange => {
     const {events} = historyState
     const leftRev = selection && Array.isArray(selection) ? selection[0] : selection
     const rightRev = selection && Array.isArray(selection) ? selection[1] : selection
@@ -102,148 +155,80 @@ export function useDocumentHistory({
     }
   }, [historyState.events, selection])
 
-  const revision = React.useMemo(() => {
-    // `from` and `to` are the same
+  const revision = useMemo(() => {
     if (range.from.rev === range.to.rev) {
+      // `from` and `to` are the same
       return {from: toRevision, to: toRevision}
     }
 
     return {from: fromRevision, to: toRevision}
   }, [fromRevision, toRevision])
 
-  const selectedHistoryEvent = React.useMemo(
+  const selectedHistoryEvent = useMemo(
     () => findHistoryEventByRev(range.to.rev, historyState.events),
     [range.to.rev, historyState.events]
   )
   const selectedHistoryEventIsLatest =
     range.to.rev === CURRENT_REVISION_FLAG && selectedHistoryEvent === historyState.events[0]
 
-  // React.useEffect(() => {
-  //   console.log('range', range.from.index, range.to.index)
-  // }, [range])
-
   // Callbacks
 
-  const setSelection = React.useCallback(
+  const setSelection = useCallback(
     (selection: RevisionRange) => {
       if (selection) {
-        paneRouter.setParams(
-          {...paneRouter.params, rev: encodeRevisionRange(selection)},
-          {recurseIfInherited: true}
-        )
+        setUrlRev(encodeRevisionRange(selection))
       } else {
-        const {rev: revParam, ...newParams} = paneRouter.params
-
-        if (revParam) {
-          paneRouter.setParams(newParams, {recurseIfInherited: true})
-        }
+        setUrlRev(null)
       }
     },
     [paneRouter, selection]
   )
 
-  const openHistory = React.useCallback(() => {
-    paneRouter.setParams(
-      {...paneRouter.params, rev: CURRENT_REVISION_FLAG},
-      {recurseIfInherited: true}
-    )
+  const openHistory = useCallback(() => {
+    setUrlRev(CURRENT_REVISION_FLAG)
   }, [paneRouter])
 
-  const loadRev = (
-    subRef: React.MutableRefObject<Subscription | null>,
-    revRef: React.MutableRefObject<string | null>,
-    event: HistoryTimelineEvent | null,
-    rev: string | null,
-    setRevision: React.Dispatch<React.SetStateAction<HistoryRevisionState>>
-  ) => {
-    debug(`Attempt to load revision=${rev}`)
-
-    const prevRev = revRef.current
-
-    if (!rev || selectedHistoryEventIsLatest) {
-      debug('No revision ID to load')
-
-      if (prevRev) {
-        debug('Unload current loaded revision')
-        setRevision(INITIAL_REVISION)
-      }
-      return
-    }
-
-    if (!historyState.isLoaded) {
-      debug('History events are not loaded, so cannot load revision yet')
-      return
-    }
-
-    // Check if the revision ID was changed
-    if (rev !== prevRev) {
-      revRef.current = rev
-
-      if (!event) {
-        debug('Could not find event with revision=%s', rev)
-        return
-      }
-
-      if (event.type === 'unknown') {
-        debug('Encountered unknown event:', event)
-        return
-      }
-
-      if (!event.displayDocumentId) {
-        debug(`Event of type=${event.type} is missing displayDocumentId`)
-        return
-      }
-
-      setRevision(val => ({
-        ...val,
-        snapshot: null,
-        prevSnapshot: val.snapshot || val.prevSnapshot,
-        isLoading: true
-      }))
-
-      if (subRef.current) {
-        subRef.current.unsubscribe()
-      }
-
-      subRef.current = fetchRevision(event.displayDocumentId, event.rev).subscribe({
-        next(snapshot) {
-          setRevision(val => ({
-            ...val,
-            isLoading: false,
-            snapshot,
-            prevSnapshot: null
-          }))
-        },
-        error(err: Error) {
-          setRevision(val => ({
-            ...val,
-            error: err,
-            isLoading: false
-          }))
-        }
-      })
-    }
-  }
-
   // Load `to` revision
-  React.useEffect(() => {
-    loadRev(toRevSubRef, toRevRef, range.to.event, range.to.rev, setToRevision)
-  }, [range, historyState.isLoaded, selectedHistoryEventIsLatest])
+  useEffect(() => {
+    loadRev(
+      toRevSubRef,
+      toRevRef,
+      range.to.event,
+      range.to.rev,
+      setToRevision,
+      selectedHistoryEventIsLatest,
+      historyState.isLoaded
+    )
+  }, [range, setToRevision, historyState.isLoaded, selectedHistoryEventIsLatest])
 
   // Load `from` revision
-  React.useEffect(() => {
+  useEffect(() => {
     if (range.from.rev === range.to.rev) {
-      loadRev(fromRevSubRef, fromRevRef, null, null, setFromRevision)
+      loadRev(
+        fromRevSubRef,
+        fromRevRef,
+        null,
+        null,
+        setFromRevision,
+        selectedHistoryEventIsLatest,
+        historyState.isLoaded
+      )
     } else {
-      loadRev(fromRevSubRef, fromRevRef, range.from.event, range.from.rev, setFromRevision)
+      loadRev(
+        fromRevSubRef,
+        fromRevRef,
+        range.from.event,
+        range.from.rev,
+        setFromRevision,
+        selectedHistoryEventIsLatest,
+        historyState.isLoaded
+      )
     }
-  }, [range, historyState.isLoaded, selectedHistoryEventIsLatest])
+  }, [range, setFromRevision, historyState.isLoaded, selectedHistoryEventIsLatest])
 
   // Load history events
-  React.useEffect(() => {
+  useEffect(() => {
     if (range.to.rev && !historyState.isLoaded && !historyState.isLoading) {
-      debug('Load history events')
-
       if (historyEventsSubscriptionRef.current) {
         historyEventsSubscriptionRef.current.unsubscribe()
       }
@@ -266,8 +251,6 @@ export function useDocumentHistory({
     }
 
     if (!range.to.rev) {
-      debug('Reset history events')
-
       // reset history state
       setHistoryEventsState(INITIAL_HISTORY_STATE)
 
@@ -278,7 +261,7 @@ export function useDocumentHistory({
   }, [range.to.rev, historyState.isLoaded, historyState.isLoading, documentId])
 
   // Unsubscribe from observables on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (historyEventsSubscriptionRef.current) {
         historyEventsSubscriptionRef.current.unsubscribe()
@@ -289,6 +272,18 @@ export function useDocumentHistory({
       }
     }
   }, [])
+
+  // Update pane router param
+  useEffect(() => {
+    if (urlRev) {
+      paneRouter.setParams({...paneRouter.params, rev: urlRev}, {recurseIfInherited: true})
+    } else {
+      const {rev: revParam, ...newParams} = paneRouter.params
+      if (revParam) {
+        paneRouter.setParams(newParams, {recurseIfInherited: true})
+      }
+    }
+  }, [urlRev])
 
   return {
     historyState,

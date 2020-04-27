@@ -23,7 +23,7 @@ interface Props {
   selection: RevisionRange
 }
 
-export function EditSessionGroupEvent(props: Props) {
+export const EditSessionGroupEvent = React.memo((props: Props) => {
   const {event, isFirst, isLast, isSelected, now, onSelect, selection} = props
 
   const handleHeaderClick = (ev: React.MouseEvent<HTMLButtonElement>) => {
@@ -58,4 +58,6 @@ export function EditSessionGroupEvent(props: Props) {
       </div>
     </div>
   )
-}
+})
+
+EditSessionGroupEvent.displayName = 'EditSessionGroupEvent'

@@ -22,6 +22,12 @@ import styles from './DocumentPane.css'
 
 declare const __DEV__: boolean
 
+interface DocumentPaneOptions {
+  id: string
+  type: string
+  template?: string
+}
+
 interface Props {
   title?: string
   paneKey: string
@@ -41,19 +47,18 @@ interface Props {
   menuItemGroups: {id: string}[]
   views: DocumentViewType[]
   initialValue?: Doc
-  options: {
-    id: string
-    type: string
-    template?: string
-  }
+  options: DocumentPaneOptions
   urlParams: {
     view: string
     rev: string
   }
 }
 
-function getInitialValue(props: Props): Doc {
-  const {initialValue = {}, options, value} = props
+function getInitialValue(
+  options: DocumentPaneOptions,
+  value: Doc | null,
+  initialValue: Doc = {}
+): Doc {
   const base = {_type: options.type}
 
   return value ? base : {...base, ...initialValue}
@@ -117,7 +122,10 @@ function DocumentPane(props: Props) {
   const canShowChangesList = isLastSibling && !isCollapsed && isHistoryEnabled
   const isHistoryOpen = Boolean(urlParams.rev)
 
-  const initialValue = getInitialValue(props)
+  const initialValue = React.useMemo(
+    () => getInitialValue(props.options, props.value, props.initialValue),
+    [props.options, props.value, props.initialValue]
+  )
   const activeViewId = paneRouter.params.view || (views[0] && views[0].id)
   const menuItems =
     getMenuItems({
@@ -129,87 +137,109 @@ function DocumentPane(props: Props) {
       canShowHistoryList
     }) || []
 
+  const revisionIsLoading = revision.from.isLoading && revision.to.isLoading
+  const toValue = selectedHistoryEventIsLatest ? value : revision.to.snapshot
+  const fromValue = revision.from.snapshot
+
+  const showHistoryNavigator = isHistoryOpen && canShowHistoryList
+  const showChangesInspector = isHistoryOpen && canShowChangesList
+
   // Callbacks
 
-  const handleOpenHistory = () => {
+  const handleOpenHistory = React.useCallback(() => {
     if (!canShowHistoryList || isHistoryOpen) {
       return
     }
 
     openHistory()
-  }
+  }, [canShowHistoryList, isHistoryOpen, openHistory])
 
-  const handleToggleInspect = () => {
+  const handleToggleInspect = React.useCallback(() => {
     if (!value) return
     setInspect(val => !val)
-  }
+  }, [value, setInspect])
 
-  const handleKeyUp = (event: any) => {
-    if (event.key === 'Escape' && showValidationTooltip) {
-      setShowValidationTooltip(false)
-    }
+  const handleKeyUp = React.useCallback(
+    (event: any) => {
+      if (event.key === 'Escape' && showValidationTooltip) {
+        setShowValidationTooltip(false)
+      }
 
-    if (isInspectHotkey(event) && !isHistoryOpen) {
-      handleToggleInspect()
-    }
+      if (isInspectHotkey(event) && !isHistoryOpen) {
+        handleToggleInspect()
+      }
 
-    if (isPreviewHotkey(event)) {
-      // const {draft, published} = props
-      const item = getProductionPreviewItem({
-        value,
-        rev: selectedHistoryEvent && selectedHistoryEvent.rev
-      })
+      if (isPreviewHotkey(event)) {
+        // const {draft, published} = props
+        const item = getProductionPreviewItem({
+          value,
+          rev: selectedHistoryEvent && selectedHistoryEvent.rev
+        })
 
-      if (item && item.url) window.open(item.url)
-    }
-  }
+        if (item && item.url) window.open(item.url)
+      }
+    },
+    [
+      showValidationTooltip,
+      setShowValidationTooltip,
+      handleToggleInspect,
+      value,
+      selectedHistoryEvent
+    ]
+  )
 
-  const handleCloseValidationResults = () => {
+  const handleCloseValidationResults = React.useCallback(() => {
     setShowValidationTooltip(false)
-  }
+  }, [setShowValidationTooltip])
 
-  const handleClosePane = () => {
+  const handleClosePane = React.useCallback(() => {
     paneRouter.closeCurrent()
-  }
+  }, [paneRouter])
 
-  const handleHideInspector = () => {
+  const handleHideInspector = React.useCallback(() => {
     setInspect(false)
-  }
+  }, [setInspect])
 
-  const handleMenuAction = (item: MenuAction) => {
-    if (item.action === 'production-preview') {
-      window.open(item.url)
-      return true
-    }
-    if (item.action === 'inspect') {
-      setInspect(true)
-      return true
-    }
-    if (item.action === 'browseHistory') {
-      handleOpenHistory()
-      return true
-    }
-    return false
-  }
+  const handleMenuAction = React.useCallback(
+    (item: MenuAction) => {
+      if (item.action === 'production-preview') {
+        window.open(item.url)
+        return true
+      }
+      if (item.action === 'inspect') {
+        setInspect(true)
+        return true
+      }
+      if (item.action === 'browseHistory') {
+        handleOpenHistory()
+        return true
+      }
+      return false
+    },
+    [setInspect, handleOpenHistory]
+  )
 
-  const handleSetActiveView = (...args: any[]) => {
-    paneRouter.setView(...args)
-  }
+  const handleSetActiveView = React.useCallback(
+    (...args: any[]) => {
+      paneRouter.setView(...args)
+    },
+    [paneRouter]
+  )
 
-  const handleSetFocus = (path: any) => {
+  const handleSetFocus = React.useCallback((path: any[]) => {
     if (formRef.current) {
       formRef.current.handleFocus(path)
     }
-  }
+  }, [])
 
-  const handleSplitPane = () => {
+  const handleSplitPane = React.useCallback(() => {
     if (hasNarrowScreen) return
     paneRouter.duplicateCurrent()
-  }
+  }, [hasNarrowScreen, paneRouter])
 
-  const handleToggleValidationResults = () => {
+  const handleToggleValidationResults = React.useCallback(() => {
     setShowValidationTooltip(val => !val)
-  }
+  }, [setShowValidationTooltip])
 
   const handleCloseHistory = React.useCallback(() => {
     const {rev: revParam, ...params} = paneRouter.params
@@ -236,7 +266,7 @@ function DocumentPane(props: Props) {
   React.useEffect(() => {
     const resizeSubscriber = windowWidth$.subscribe(handleResize)
     return () => resizeSubscriber.unsubscribe()
-  }, [isHistoryEnabled])
+  }, [handleResize])
 
   // Reset document state
   React.useEffect(() => {
@@ -284,13 +314,6 @@ function DocumentPane(props: Props) {
   if (!documentId) {
     return <div>No document ID</div>
   }
-
-  const revisionIsLoading = revision.from.isLoading && revision.to.isLoading
-  const toValue = selectedHistoryEventIsLatest ? value : revision.to.snapshot
-  const fromValue = revision.from.snapshot
-
-  const showHistoryNavigator = isHistoryOpen && canShowHistoryList
-  const showChangesInspector = isHistoryOpen && canShowChangesList
 
   return (
     <DocumentActionShortcuts

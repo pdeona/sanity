@@ -86,7 +86,8 @@
   position: relative;
   display: block;
   background-color: var(--fieldset-bg);
-  transition: all 0.1s linear;
+
+  /* transition: all 0.1s linear; */
 
   @nest .transparent & {
     background-color: transparent;
